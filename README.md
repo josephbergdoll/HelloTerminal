@@ -23,6 +23,8 @@
 ╰──────────────────────────────────────────────────────────────────╯
 ```
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 A random-language "hello" banner for your terminal. Obviously inspired by Apple's welcome screens.
 
 ## Use
