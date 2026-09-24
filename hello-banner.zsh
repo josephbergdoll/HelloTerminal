@@ -22,7 +22,9 @@
 #   HELLO_BANNER_LANGS="en, fr, es"
 #   source /path/to/HelloTerminal/hello-banner.zsh
 #
-# Available codes: en de fr es da it sv nl fi ro sk
+# Available codes: en de fr es da it sv nl fi ro sk ar bg ca cs el he
+# hi hr hu id ja kk ko ms nb pl pt pt_BR ru th tr uk vi zh_HK zh-Hans
+# zh-Hant
 # Unset it, or leave it unset, to use all of them.
 
 # Resolve this file's own directory at source-time. Using $0 inside
@@ -33,7 +35,11 @@ typeset -g HELLO_BANNER_DIR="${${(%):-%x}:A:h}/ascii"
 
 # All languages this repo ships art for. Also doubles as the allowlist
 # used to sanity-check a user-supplied HELLO_BANNER_LANGS below.
-typeset -ga _HELLO_BANNER_ALL_LANGS=(en de fr es da it sv nl fi ro sk)
+typeset -ga _HELLO_BANNER_ALL_LANGS=(
+  en de fr es da it sv nl fi ro sk
+  ar bg ca cs el he hi hr hu id ja kk ko ms nb pl pt pt_BR ru th tr uk
+  vi zh_HK zh-Hans zh-Hant
+)
 
 if (( ! ${+HELLO_BANNER_LANGS} )); then
   HELLO_BANNER_LANGS=("${_HELLO_BANNER_ALL_LANGS[@]}")
@@ -66,25 +72,48 @@ hello_banner() {
   local -a langs=("${HELLO_BANNER_LANGS[@]}")
   local lang=${langs[$((RANDOM % ${#langs[@]} + 1))]}
 
-  if [ "$cols" -ge 67 ] && [ -f "$dir/hello-$lang-ascii.txt" ]; then
+  if [ "$cols" -ge 68 ] && [ -f "$dir/hello-$lang-ascii.txt" ]; then
     cat "$dir/hello-$lang-ascii.txt"
   elif [ "$cols" -ge 44 ] && [ -f "$dir/hello-$lang-ascii-compact.txt" ]; then
     cat "$dir/hello-$lang-ascii-compact.txt"
-  elif [ "$cols" -ge 32 ] && [ -f "$dir/hello-$lang-ascii-mini.txt" ]; then
+  elif [ "$cols" -ge 30 ] && [ -f "$dir/hello-$lang-ascii-mini.txt" ]; then
     cat "$dir/hello-$lang-ascii-mini.txt"
   else
     case "$lang" in
-      de) echo "hallo." ;;
-      fr) echo "bonjour." ;;
-      es) echo "hola." ;;
-      da) echo "hej." ;;
-      it) echo "ciao." ;;
-      sv) echo "hej." ;;
-      nl) echo "hallo." ;;
-      fi) echo "hei." ;;
-      ro) echo "salut." ;;
-      sk) echo "ahoj." ;;
-      *)  echo "hello." ;;
+      de)      echo "hallo." ;;
+      fr)      echo "bonjour." ;;
+      es)      echo "hola." ;;
+      da)      echo "hej." ;;
+      it)      echo "ciao." ;;
+      sv)      echo "hej." ;;
+      nl)      echo "hallo." ;;
+      fi)      echo "hei." ;;
+      ro)      echo "salut." ;;
+      sk)      echo "ahoj." ;;
+      ar)      echo "مرحبا." ;;
+      bg)      echo "здравей." ;;
+      ca)      echo "hola." ;;
+      cs)      echo "ahoj." ;;
+      el)      echo "γεια." ;;
+      he)      echo "שלום." ;;
+      hi)      echo "नमस्ते." ;;
+      hr)      echo "bok." ;;
+      hu)      echo "szia." ;;
+      id)      echo "halo." ;;
+      ja)      echo "こんにちは。" ;;
+      kk)      echo "сәлем." ;;
+      ko)      echo "안녕하세요." ;;
+      ms)      echo "helo." ;;
+      nb)      echo "hei." ;;
+      pl)      echo "cześć." ;;
+      pt|pt_BR) echo "olá." ;;
+      ru)      echo "привет." ;;
+      th)      echo "สวัสดี." ;;
+      tr)      echo "merhaba." ;;
+      uk)      echo "привіт." ;;
+      vi)      echo "xin chào." ;;
+      zh_HK|zh-Hans|zh-Hant) echo "你好。" ;;
+      *)       echo "hello." ;;
     esac
   fi
 }
