@@ -30,7 +30,7 @@ each other -- see "Design conventions" below.
   language's column width = its source SVG's viewBox width, scaled by
   one constant factor shared across every language being generated in
   that run (anchored so the naturally widest word reaches the tier's
-  target width: 50/32/22 columns for full/compact/mini). A short word
+  target width: 105/86/54 columns for full/compact/mini). A short word
   being narrower than a long word is correct, not a bug -- it gets
   centered in the shared box width, not stretched to fill it.
 - **The period sits on the baseline, not the canvas edge.** It's
@@ -45,11 +45,77 @@ each other -- see "Design conventions" below.
   before centering any of them, so run it once across the whole set
   rather than one language at a time, or you'll get mismatched box
   widths.
-- **A single lone half-block character reads as chopped/thin**, and
-  two adjacent half-blocks only read as connected, gap-free ink if
-  they face toward each other's filled side. The auto-generation
-  doesn't always avoid this on its own at these tiny resolutions --
-  see `../HINTING.md` for the manual fix.
+- **A single lone half-filled character reads as chopped/thin**, and
+  two adjacent partially-filled characters only read as connected,
+  gap-free ink if they face toward each other's filled side. The
+  auto-generation doesn't always avoid this on its own at these tiny
+  resolutions -- see `../HINTING.md` for the manual fix.
+
+## viewBox padding
+
+Every source SVG's `viewBox` is fit to its path *control points*, not
+to the rendered ink -- a stroke's ink extends `stroke-width / 2`
+beyond the path in every direction (more at round caps/joins), and SVG
+clips anything outside the viewBox by default. `generate.py` pads the
+viewBox by half the stroke width before rasterizing (`padded_viewbox`/
+`write_padded_svg`) specifically to stop this from silently chopping
+off stroke ends -- e.g. the lead-in stroke of "hello"'s h, or the tail
+after the o. This relies on `stroke-width` being a literal attribute
+on the SVG (not set via CSS/a class), same as the unit-system
+assumption above.
+
+## Aspect ratio
+
+Terminal character cells are roughly twice as tall as wide. A source
+SVG's viewBox is proportioned normally (equal x/y units), so
+rasterizing it into a `cw x ch` character grid 1:1 -- treating a
+column and a row as equally "wide" -- stretches every glyph taller and
+narrower than its true shape once actually displayed. This is why the
+art looked "condensed" before this was addressed: a `cw:ch` ratio that
+looks reasonable in raw character counts is only around half that once
+you account for the cell shape.
+
+The fix has two parts, and both matter:
+
+1. **Rasterize at each tier's `target_cw`/`ch` ratio, not 1:1.** The
+   `TIERS` column/row combinations were chosen so `cw/ch`, times the
+   terminal's own cell-aspect correction (~0.5), lands close to the
+   *source* SVG's true `viewBox` aspect ratio for the widest language
+   in the set. `full` is close to true proportions; `compact` and
+   `mini` are deliberately left more condensed than true (see below),
+   since correcting them fully would need a much wider minimum
+   terminal than a "compact"/"mini" tier should require.
+2. **Use a 2x3 sextant subgrid per character, not 2x2 quadrants.**
+   Quadrants (`SUB_ROWS = 2`) only give 2 sub-rows of vertical detail
+   per character row; fixing the aspect ratio means fewer character
+   rows are available for a given tier, so more vertical detail per
+   row is needed to avoid losing fidelity. Sextants (`SUB_ROWS = 3`,
+   `SUB_COLS` unchanged at 2) give 50% more vertical resolution per
+   row, which is what makes `compact`/`mini` still read cleanly at a
+   deliberately-condensed aspect ratio, and what makes `full` densely
+   detailed at true proportions instead of needing an impractically
+   wide column budget to get there through columns alone.
+
+Don't relitigate the exact `TIERS` numbers without re-testing by eye
+-- they're a judgment call balancing proportion correctness against
+minimum terminal width, not a formula with one right answer. If you
+do change them, recompute `hello-banner.zsh`'s column thresholds from
+the actual generated box width (the `generate.py` output prints it
+per tier) rather than reusing the old ones.
+
+### Font support
+
+Sextant block characters (U+1FB00-1FB3B) are from Unicode 13.0 (2020).
+Support is inconsistent: as of this writing, no font actually shipped
+with macOS has real glyphs for them (checked via each font's own
+cmap, not `fc-match`, which reports misleadingly-optimistic fallback
+candidates that don't actually contain the glyph) -- yet they still
+render correctly in at least some real-world terminal/font
+combinations, apparently via the OS's own per-glyph symbol-font
+fallback rather than the terminal's primary font. Practically: test
+any change in an actual terminal, not just by reading the raw
+characters in a file, and don't assume a font's advertised coverage
+(or lack of it) predicts what a user will actually see.
 
 ## Workflow for adding or regenerating a language
 

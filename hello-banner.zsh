@@ -72,11 +72,11 @@ hello_banner() {
   local -a langs=("${HELLO_BANNER_LANGS[@]}")
   local lang=${langs[$((RANDOM % ${#langs[@]} + 1))]}
 
-  if [ "$cols" -ge 68 ] && [ -f "$dir/hello-$lang-ascii.txt" ]; then
+  if [ "$cols" -ge 123 ] && [ -f "$dir/hello-$lang-ascii.txt" ]; then
     cat "$dir/hello-$lang-ascii.txt"
-  elif [ "$cols" -ge 44 ] && [ -f "$dir/hello-$lang-ascii-compact.txt" ]; then
+  elif [ "$cols" -ge 98 ] && [ -f "$dir/hello-$lang-ascii-compact.txt" ]; then
     cat "$dir/hello-$lang-ascii-compact.txt"
-  elif [ "$cols" -ge 30 ] && [ -f "$dir/hello-$lang-ascii-mini.txt" ]; then
+  elif [ "$cols" -ge 64 ] && [ -f "$dir/hello-$lang-ascii-mini.txt" ]; then
     cat "$dir/hello-$lang-ascii-mini.txt"
   else
     case "$lang" in

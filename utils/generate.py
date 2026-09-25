@@ -25,27 +25,33 @@ import shutil
 import subprocess
 import sys
 
-QUAD_MAP = {
-    (0, 0, 0, 0): ' ', (0, 0, 0, 1): '▗', (0, 0, 1, 0): '▖', (0, 0, 1, 1): '▄',
-    (0, 1, 0, 0): '▝', (0, 1, 0, 1): '▐', (0, 1, 1, 0): '▞', (0, 1, 1, 1): '▟',
-    (1, 0, 0, 0): '▘', (1, 0, 0, 1): '▚', (1, 0, 1, 0): '▌', (1, 0, 1, 1): '▙',
-    (1, 1, 0, 0): '▀', (1, 1, 0, 1): '▜', (1, 1, 1, 0): '▛', (1, 1, 1, 1): '█',
-}
+# Each character cell is divided into a SUB_COLS x SUB_ROWS subgrid,
+# rendered via the Unicode block sextant characters (U+1FB00-1FB3B,
+# plus four combinations that coincide with older, universally-
+# supported block elements: space, left/right half block, full block).
+# A 2-wide x 3-tall subgrid was chosen, rather than the classic 2x2
+# quadrant blocks, because terminal character cells are themselves
+# roughly twice as tall as wide -- see "Aspect ratio" in AGENTS.md.
+# Sextants need a font with Unicode 13.0 (2020) "Symbols for Legacy
+# Computing" coverage; most modern terminal fonts have it, but not all
+# (see AGENTS.md).
+SUB_COLS = 2
+SUB_ROWS = 3
 
 # One tier = (suffix on the output filename, character rows, box margin,
 # target column width for the naturally widest language in the set).
 TIERS = [
-    ('', 10, 5, 50),           # full
-    ('-compact', 10, 2, 32),   # compact
-    ('-mini', 8, 1, 22),       # mini
+    ('', 8, 5, 105),           # full
+    ('-compact', 6, 2, 86),    # compact
+    ('-mini', 4, 1, 54),       # mini
 ]
 
-# Supersample factor: each character cell is a 2x2 quadrant grid, and
-# each quadrant is itself averaged over a KxK block of rendered pixels
-# before thresholding. A single pixel per quadrant is very sensitive to
-# exactly where a thin curve lands on the pixel grid (it can make one
-# side of a round letter, like the left of a "c", drop out while the
-# other survives); averaging a KxK block is far less aliasing-prone.
+# Supersample factor: each subgrid cell is itself averaged over a KxK
+# block of rendered pixels before thresholding. A single pixel per
+# subgrid cell is very sensitive to exactly where a thin curve lands on
+# the pixel grid (it can make one side of a round letter, like the left
+# of a "c", drop out while the other survives); averaging a KxK block
+# is far less aliasing-prone.
 SUPERSAMPLE_K = 4
 INK_THRESHOLD = 160  # grayscale value (0-255); darker than this = ink
 
@@ -75,24 +81,82 @@ def read_pgm(path):
     return width, height, list(pixels)
 
 
-def viewbox_width(svg_path):
+def stroke_width(svg_path):
+    with open(svg_path) as f:
+        content = f.read()
+    m = re.search(r'stroke-width="([0-9.]+)"', content)
+    if not m:
+        raise ValueError(f"{svg_path}: no stroke-width attribute found")
+    return float(m.group(1))
+
+
+def padded_viewbox(svg_path):
+    """This set's viewBoxes are fit to each path's control points, not
+    to its rendered ink: a stroke's ink extends stroke-width/2 beyond
+    its path in every direction (more at round caps/joins), and SVG
+    clips anything outside the viewBox by default. Left uncorrected,
+    that silently chops off stroke ends -- e.g. the lead-in stroke of
+    "hello"'s h, or the tail after the o. Pad the viewBox by half the
+    stroke width on every side so the full ink is rasterized."""
     with open(svg_path) as f:
         content = f.read()
     m = re.search(r'viewBox="([-0-9. ]+)"', content)
     if not m:
         raise ValueError(f"{svg_path}: no viewBox attribute found")
-    return float(m.group(1).split()[2])
+    x, y, w, h = (float(v) for v in m.group(1).split())
+    pad = stroke_width(svg_path) / 2
+    return x - pad, y - pad, w + 2 * pad, h + 2 * pad
+
+
+def viewbox_width(svg_path):
+    return padded_viewbox(svg_path)[2]
+
+
+def write_padded_svg(svg_path, tmp_dir, tag):
+    x, y, w, h = padded_viewbox(svg_path)
+    with open(svg_path) as f:
+        content = f.read()
+    m = re.search(r'viewBox="[-0-9. ]+"', content)
+    padded = content[:m.start()] + f'viewBox="{x} {y} {w} {h}"' + content[m.end():]
+    out_path = os.path.join(tmp_dir, f'{tag}-padded.svg')
+    with open(out_path, 'w', encoding='utf-8') as f:
+        f.write(padded)
+    return out_path
+
+
+def _sextant_char(bits):
+    """bits: 6 booleans for a 2-wide x 3-tall subgrid, in row-major
+    order (top-left, top-right, mid-left, mid-right, bottom-left,
+    bottom-right). Maps to the Unicode block sextant characters,
+    reusing the four combinations that coincide with older, universally
+    -supported block elements (space, left/right half block, full
+    block) instead of their dedicated sextant codepoints."""
+    v = bits[0] | (bits[1] << 1) | (bits[2] << 2) | (bits[3] << 3) | (bits[4] << 4) | (bits[5] << 5)
+    if v == 0:
+        return ' '
+    if v == 63:
+        return '█'
+    if v == 21:
+        return '▌'
+    if v == 42:
+        return '▐'
+    if v < 21:
+        return chr(0x1FB00 + (v - 1))
+    if v < 42:
+        return chr(0x1FB00 + (v - 2))
+    return chr(0x1FB00 + (v - 3))
 
 
 def render_glyph(svg_path, cw, ch, tmp_dir, tag):
     """Rasterize svg_path into a cw x ch character grid (as a list of
     strings), with the baseline-anchored period already placed."""
-    sw, sh = cw * 2 * SUPERSAMPLE_K, ch * 2 * SUPERSAMPLE_K
+    padded_path = write_padded_svg(svg_path, tmp_dir, tag)
+    sw, sh = cw * SUB_COLS * SUPERSAMPLE_K, ch * SUB_ROWS * SUPERSAMPLE_K
     png_path = os.path.join(tmp_dir, f'{tag}.png')
     pgm_path = os.path.join(tmp_dir, f'{tag}.pgm')
     subprocess.run(
         ['rsvg-convert', '-w', str(sw), '-h', str(sh),
-         '--background-color=white', svg_path, '-o', png_path],
+         '--background-color=white', padded_path, '-o', png_path],
         check=True,
     )
     subprocess.run(
@@ -101,11 +165,11 @@ def render_glyph(svg_path, cw, ch, tmp_dir, tag):
     )
     sw2, sh2, pixels = read_pgm(pgm_path)
 
-    def quadrant_ink(qx, qy):
+    def cell_ink(cx, cy):
         total = 0
         for dy in range(SUPERSAMPLE_K):
-            y = qy * SUPERSAMPLE_K + dy
-            row_base = y * sw2 + qx * SUPERSAMPLE_K
+            y = cy * SUPERSAMPLE_K + dy
+            row_base = y * sw2 + cx * SUPERSAMPLE_K
             for dx in range(SUPERSAMPLE_K):
                 total += pixels[row_base + dx]
         avg = total / (SUPERSAMPLE_K * SUPERSAMPLE_K)
@@ -115,11 +179,11 @@ def render_glyph(svg_path, cw, ch, tmp_dir, tag):
     for cy in range(ch):
         row = []
         for cx in range(cw):
-            tl = int(quadrant_ink(cx * 2, cy * 2))
-            tr = int(quadrant_ink(cx * 2 + 1, cy * 2))
-            bl = int(quadrant_ink(cx * 2, cy * 2 + 1))
-            br = int(quadrant_ink(cx * 2 + 1, cy * 2 + 1))
-            row.append(QUAD_MAP[(tl, tr, bl, br)])
+            bits = []
+            for sy in range(SUB_ROWS):
+                for sx in range(SUB_COLS):
+                    bits.append(int(cell_ink(cx * SUB_COLS + sx, cy * SUB_ROWS + sy)))
+            row.append(_sextant_char(bits))
         grid.append(row)
 
     _solidify_tittle_dots(grid, cw, ch)
