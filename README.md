@@ -1,30 +1,32 @@
 ```
-╭─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│                                                                                                                         │
-│                                                                                                                         │
-│                                                                                                                         │
-│                                                                                                                         │
-│                                                                                                                         │
-│                                      🬵🬻🬎🬬🬱                🬞🬹🬝🬎🬺🬏   🬵🬻🬎🬬🬱                                                │
-│                                     🬦█🬀 ▐█                🬻🬕  █▌  🬦█🬀 ▐█                                                │
-│                                     🬷🬕 🬞█🬄               🬷🬝  🬦█  🬞█🬄  █▌                                                │
-│                                     █▌🬵█🬲🬭      🬭🬹🬹🬭     █▌ 🬞█🬄  ▐█  🬻🬝    🬞🬭🬹🬹🬭🬏   🬞🬭                                  │
-│                                    🬦██🬎🬂🬂🬨🬺    🬻🬕🬀 🬨🬺    █🬀🬵█🬀   ▐🬕🬞🬻🬕    🬵🬝🬂🬀🬁🬂██🬹🬹🬝🬆                                  │
-│                                  🬭🬹██🬄   ▐🬝   ▐█  🬞🬻🬆    █🬻🬝🬀    ▐🬺█🬆    🬷█     ▐█                                      │
-│                                🬹🬝🬆🬀█🬕    █▌   🬁█🬱🬹🬝🬀   🬭🬻█🬲     🬭🬻█🬐   🬞🬷██    🬞█🬄                                      │
-│                                    █🬄    🬊🬬🬹🬹🬹🬝🬎🬎🬬🬹🬹🬹🬻🬎🬆🬀🬁🬊🬪🬹🬹🬻🬎🬆🬀🬊🬬🬹🬹🬻🬎🬂 🬊🬬🬹🬹🬻🬎🬀   ██                                  │
-│                                                                                                                         │
-│                                                                                                                         │
-│                                                     HelloTerminal.                                                      │
-│                                                                                                                         │
-│                                                                                                                         │
-╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭──────────────────────────────────────────────────────────────────╮
+│                                                                  │
+│                                                                  │
+│                                                                  │
+│                                                                  │
+│                                                                  │
+│           ▗█▀█▄                 ▟▛▜█▖   ▗█▀█▄                    │
+│          ▗█▘ ▐█                ▟▛  █▌  ▐█▘ ▐█                    │
+│          ▟▛ ▗█▘               ▐▛  ▐█   █▘  █▌                    │
+│          █▌▄█▙▖      ▄▄▄▄     █▌ ▗█▘  ▐█  ▟▛    ▗▄▄▄▄▖   ▗▄      │
+│         ▐██▛▀▀▜▙    ▟▛▘ ▜▙    █▘▄█▘   ▐▛ ▟▛    ▟▛▀  ▀██▙▟█▘      │
+│       ▗▄██▘   ▐▛   ▐█  ▗█▌    ██▛     ▐▙█▀    ▟█     ▐█          │
+│     ▟█▀▘█▛    █▌   ▝█▄▟▛▘   ▄▟█▙     ▄▟█▌    ▟██    ▗█▘          │
+│         █▘    ▀█▙▄██▀▀█▄▄▄█▛▀  ▀█▙▄█▛▀ ▝▜▙▄█▛▀ ▀█▄▄█▛▘   ██      │
+│                                                                  │
+│                                                                  │
+│                          HelloTerminal.                          │
+│                                                                  │
+│                                                                  │
+╰──────────────────────────────────────────────────────────────────╯
 ```
 
 Requires a terminal at least 123 columns wide to show the full banner
 (narrower terminals fall back to smaller tiers, then plain text -- see
-`hello-banner.zsh`). Sextant block characters need decent Unicode
-symbol support in your terminal/font; see "Font support" in
+`hello-banner.zsh`). The preview above is rendered with universally-
+supported block characters for GitHub's sake; the actual banner uses
+Unicode sextant characters for extra detail, which need decent Unicode
+symbol support in your terminal/font -- see "Font support" in
 `utils/AGENTS.md` if it renders oddly.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)

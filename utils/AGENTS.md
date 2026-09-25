@@ -117,6 +117,27 @@ any change in an actual terminal, not just by reading the raw
 characters in a file, and don't assume a font's advertised coverage
 (or lack of it) predicts what a user will actually see.
 
+## render_readme_preview.py
+
+GitHub renders README code blocks with its own fixed font, with no
+per-glyph fallback the way a real terminal app gets -- it doesn't have
+the sextant characters `generate.py` uses, so embedding the real
+`ascii/hello-en-ascii.txt` there shows up broken. This script
+re-renders "en" at the same full-tier proportions using the older,
+universally-supported quadrant block characters instead, and splices
+the result into `../README.md` in place of the existing banner code
+block.
+
+```sh
+python3 render_readme_preview.py --svg-dir /path/to/svgs
+```
+
+Run it whenever the full tier's dimensions change, or "en"'s source
+SVG changes. It renders every language (not just "en") at quadrant
+resolution to get the correct shared box width -- same reason
+`generate.py` does that -- so it takes a similar amount of time to run
+as the real generation pass.
+
 ## Workflow for adding or regenerating a language
 
 1. Get (or draw) a `hello-<lang>.svg` in the same style/unit system as

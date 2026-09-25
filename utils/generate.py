@@ -147,11 +147,32 @@ def _sextant_char(bits):
     return chr(0x1FB00 + (v - 3))
 
 
-def render_glyph(svg_path, cw, ch, tmp_dir, tag):
+def _quadrant_char(bits):
+    """bits: 4 booleans for a 2-wide x 2-tall subgrid (top-left,
+    top-right, bottom-left, bottom-right). Maps to the classic Unicode
+    block elements (Block Elements, U+2580 range) -- these have been
+    supported everywhere since early Unicode, unlike the sextant
+    characters _sextant_char uses. Only used for the GitHub-safe
+    README preview (see render_readme_preview.py); the shipped ascii/
+    art always uses sextants."""
+    quad = {
+        (0, 0, 0, 0): ' ', (0, 0, 0, 1): '▗', (0, 0, 1, 0): '▖', (0, 0, 1, 1): '▄',
+        (0, 1, 0, 0): '▝', (0, 1, 0, 1): '▐', (0, 1, 1, 0): '▞', (0, 1, 1, 1): '▟',
+        (1, 0, 0, 0): '▘', (1, 0, 0, 1): '▚', (1, 0, 1, 0): '▌', (1, 0, 1, 1): '▙',
+        (1, 1, 0, 0): '▀', (1, 1, 0, 1): '▜', (1, 1, 1, 0): '▛', (1, 1, 1, 1): '█',
+    }
+    return quad[tuple(bits)]
+
+
+def render_glyph(svg_path, cw, ch, tmp_dir, tag, sub_cols=None, sub_rows=None, char_fn=None):
     """Rasterize svg_path into a cw x ch character grid (as a list of
     strings), with the baseline-anchored period already placed."""
+    sub_cols = SUB_COLS if sub_cols is None else sub_cols
+    sub_rows = SUB_ROWS if sub_rows is None else sub_rows
+    char_fn = _sextant_char if char_fn is None else char_fn
+
     padded_path = write_padded_svg(svg_path, tmp_dir, tag)
-    sw, sh = cw * SUB_COLS * SUPERSAMPLE_K, ch * SUB_ROWS * SUPERSAMPLE_K
+    sw, sh = cw * sub_cols * SUPERSAMPLE_K, ch * sub_rows * SUPERSAMPLE_K
     png_path = os.path.join(tmp_dir, f'{tag}.png')
     pgm_path = os.path.join(tmp_dir, f'{tag}.pgm')
     subprocess.run(
@@ -180,10 +201,10 @@ def render_glyph(svg_path, cw, ch, tmp_dir, tag):
         row = []
         for cx in range(cw):
             bits = []
-            for sy in range(SUB_ROWS):
-                for sx in range(SUB_COLS):
-                    bits.append(int(cell_ink(cx * SUB_COLS + sx, cy * SUB_ROWS + sy)))
-            row.append(_sextant_char(bits))
+            for sy in range(sub_rows):
+                for sx in range(sub_cols):
+                    bits.append(int(cell_ink(cx * sub_cols + sx, cy * sub_rows + sy)))
+            row.append(char_fn(bits))
         grid.append(row)
 
     _solidify_tittle_dots(grid, cw, ch)
