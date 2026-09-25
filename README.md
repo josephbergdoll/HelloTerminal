@@ -41,6 +41,10 @@ source /path/to/HelloTerminal/hello-banner.zsh
 
 Add that line to your `~/.zshrc`. Works from wherever the repo is cloned.
 
+While you're still sitting at that very first prompt, try resizing the
+terminal window -- the banner redraws in place to fit. It stops doing
+that the moment you run your first command.
+
 ## Configure
 
 Restrict which languages can show up by setting `HELLO_BANNER_LANGS`

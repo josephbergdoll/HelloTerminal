@@ -26,6 +26,10 @@
 # hi hr hu id ja kk ko ms nb pl pt pt_BR ru th tr uk vi zh_HK zh-Hans
 # zh-Hant
 # Unset it, or leave it unset, to use all of them.
+#
+# Live resize: while you're still at the very first prompt, resizing
+# the terminal window redraws the banner in place at the new size.
+# This stops the moment you run your first command.
 
 # Resolve this file's own directory at source-time. Using $0 inside
 # the function below would instead resolve to the CALLER's $0 when
@@ -67,55 +71,115 @@ HELLO_BANNER_LANGS=("${_HELLO_BANNER_VALID_LANGS[@]}")
 hello_banner() {
   local dir="$HELLO_BANNER_DIR"
   local cols=${COLUMNS:-$(tput cols 2>/dev/null)}
+  typeset -g _HELLO_BANNER_LINES=0
   [ -z "$cols" ] && return
 
   local -a langs=("${HELLO_BANNER_LANGS[@]}")
   local lang=${langs[$((RANDOM % ${#langs[@]} + 1))]}
+  local output=''
 
   if [ "$cols" -ge 123 ] && [ -f "$dir/hello-$lang-ascii.txt" ]; then
-    cat "$dir/hello-$lang-ascii.txt"
+    output="$(<"$dir/hello-$lang-ascii.txt")"
   elif [ "$cols" -ge 98 ] && [ -f "$dir/hello-$lang-ascii-compact.txt" ]; then
-    cat "$dir/hello-$lang-ascii-compact.txt"
+    output="$(<"$dir/hello-$lang-ascii-compact.txt")"
   elif [ "$cols" -ge 64 ] && [ -f "$dir/hello-$lang-ascii-mini.txt" ]; then
-    cat "$dir/hello-$lang-ascii-mini.txt"
+    output="$(<"$dir/hello-$lang-ascii-mini.txt")"
   else
     case "$lang" in
-      de)      echo "hallo." ;;
-      fr)      echo "bonjour." ;;
-      es)      echo "hola." ;;
-      da)      echo "hej." ;;
-      it)      echo "ciao." ;;
-      sv)      echo "hej." ;;
-      nl)      echo "hallo." ;;
-      fi)      echo "hei." ;;
-      ro)      echo "salut." ;;
-      sk)      echo "ahoj." ;;
-      ar)      echo "مرحبا." ;;
-      bg)      echo "здравей." ;;
-      ca)      echo "hola." ;;
-      cs)      echo "ahoj." ;;
-      el)      echo "γεια." ;;
-      he)      echo "שלום." ;;
-      hi)      echo "नमस्ते." ;;
-      hr)      echo "bok." ;;
-      hu)      echo "szia." ;;
-      id)      echo "halo." ;;
-      ja)      echo "こんにちは。" ;;
-      kk)      echo "сәлем." ;;
-      ko)      echo "안녕하세요." ;;
-      ms)      echo "helo." ;;
-      nb)      echo "hei." ;;
-      pl)      echo "cześć." ;;
-      pt|pt_BR) echo "olá." ;;
-      ru)      echo "привет." ;;
-      th)      echo "สวัสดี." ;;
-      tr)      echo "merhaba." ;;
-      uk)      echo "привіт." ;;
-      vi)      echo "xin chào." ;;
-      zh_HK|zh-Hans|zh-Hant) echo "你好。" ;;
-      *)       echo "hello." ;;
+      de)      output="hallo." ;;
+      fr)      output="bonjour." ;;
+      es)      output="hola." ;;
+      da)      output="hej." ;;
+      it)      output="ciao." ;;
+      sv)      output="hej." ;;
+      nl)      output="hallo." ;;
+      fi)      output="hei." ;;
+      ro)      output="salut." ;;
+      sk)      output="ahoj." ;;
+      ar)      output="مرحبا." ;;
+      bg)      output="здравей." ;;
+      ca)      output="hola." ;;
+      cs)      output="ahoj." ;;
+      el)      output="γεια." ;;
+      he)      output="שלום." ;;
+      hi)      output="नमस्ते." ;;
+      hr)      output="bok." ;;
+      hu)      output="szia." ;;
+      id)      output="halo." ;;
+      ja)      output="こんにちは。" ;;
+      kk)      output="сәлем." ;;
+      ko)      output="안녕하세요." ;;
+      ms)      output="helo." ;;
+      nb)      output="hei." ;;
+      pl)      output="cześć." ;;
+      pt|pt_BR) output="olá." ;;
+      ru)      output="привет." ;;
+      th)      output="สวัสดี." ;;
+      tr)      output="merhaba." ;;
+      uk)      output="привіт." ;;
+      vi)      output="xin chào." ;;
+      zh_HK|zh-Hans|zh-Hant) output="你好。" ;;
+      *)       output="hello." ;;
     esac
   fi
+
+  print -r -- "$output"
+  _HELLO_BANNER_LINES=${#${(f)output}}
 }
 
 hello_banner
+
+# --- Live resize -----------------------------------------------------
+# While you're still at the very first prompt (before running any
+# command), resizing the terminal window redraws the banner in place
+# to fit the new size, debounced to a second after you stop dragging
+# (dragging a window edge fires a burst of resize events, not just
+# one). This detaches permanently the moment you run a command --
+# redrawing after that could erase output that has nothing to do with
+# the banner. It also backs off for that one resize if you've started
+# typing something (so it never clobbers unsubmitted input), and never
+# activates at all if something else in your config already defines
+# TRAPWINCH.
+if (( _HELLO_BANNER_LINES == 0 )); then
+  : # nothing was shown, so there's nothing to live-resize
+elif (( ${+functions[TRAPWINCH]} )); then
+  print -u2 "hello-banner.zsh: not enabling live-resize -- TRAPWINCH is already defined elsewhere"
+elif ! zmodload -i zsh/sched 2>/dev/null; then
+  print -u2 "hello-banner.zsh: not enabling live-resize -- zsh/sched module unavailable"
+else
+  typeset -g _HELLO_BANNER_ARMED=1
+  typeset -g _HELLO_BANNER_RESIZE_GEN=0
+
+  # Every resize bumps the generation counter and (re)schedules a
+  # redraw a second out, tagged with that generation. A redraw only
+  # actually happens if its tag still matches the counter when it
+  # fires -- if a newer resize came in first, this one's just stale
+  # and skips itself, so a burst of events collapses into one redraw.
+  TRAPWINCH() {
+    (( ${+_HELLO_BANNER_ARMED} )) || return 0
+    (( _HELLO_BANNER_RESIZE_GEN++ ))
+    sched +1 _hello_banner_redraw $_HELLO_BANNER_RESIZE_GEN
+    return 0
+  }
+
+  _hello_banner_redraw() {
+    (( ${+_HELLO_BANNER_ARMED} )) || return 0
+    (( $1 == _HELLO_BANNER_RESIZE_GEN )) || return 0
+    [[ -z "$BUFFER" ]] || return 0
+    # A plain "move cursor up N lines" doesn't work here: narrowing the
+    # terminal reflows the previously-printed (wider) lines into more
+    # physical rows than were originally printed, so N under-shoots and
+    # leaves stale fragments on screen. A full clear sidesteps needing
+    # to know how many physical rows the old banner currently occupies.
+    print -n "\e[H\e[2J"
+    hello_banner
+    zle && zle reset-prompt
+  }
+
+  _hello_banner_disarm() {
+    unset _HELLO_BANNER_ARMED
+    add-zsh-hook -d preexec _hello_banner_disarm
+  }
+  autoload -Uz add-zsh-hook
+  add-zsh-hook preexec _hello_banner_disarm
+fi
